@@ -1,6 +1,9 @@
 # XLoader - ckanext-xloader
 
-[![Tests](https://github.com/ckan/ckanext-xloader/workflows/Tests/badge.svg?branch=master)](https://github.com/ckan/ckanext-xloader/actions)
+[![Tests](https://github.com/parripollo/ckanext-xloader/workflows/Tests/badge.svg?branch=master)](https://github.com/parripollo/ckanext-xloader/actions)
+
+> Fork of [ckan/ckanext-xloader](https://github.com/ckan/ckanext-xloader) tested against
+> [CKAN with PostgreSQL only](https://ckanito.cluster311.com) (no Solr, no Redis, no rq).
 [![Latest Version](https://img.shields.io/pypi/v/ckanext-xloader.svg)](https://pypi.org/project/ckanext-xloader/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/ckanext-xloader.svg)](https://pypi.org/project/ckanext-xloader/)
 [![Development Status](https://img.shields.io/pypi/status/ckanext-xloader.svg)](https://pypi.org/project/ckanext-xloader/)
