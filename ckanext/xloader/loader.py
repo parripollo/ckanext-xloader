@@ -771,7 +771,10 @@ def send_resource_to_datastore(resource_id, headers, records):
 
 def delete_datastore_resource(resource_id):
     from ckan import model
-    context = {'model': model, 'user': '', 'ignore_auth': True}
+    # as the site user, like the table creation: the activity plugin
+    # records the resource change and needs a real user
+    user = p.toolkit.get_action("get_site_user")({"ignore_auth": True}, {})
+    context = {'model': model, 'user': user['name'], 'ignore_auth': True}
     try:
         p.toolkit.get_action('datastore_delete')(context, dict(
             id=resource_id, force=True))
