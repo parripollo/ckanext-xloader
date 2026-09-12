@@ -87,6 +87,9 @@ def data(create_with_upload, apikey):
 
 
 @pytest.mark.usefixtures("clean_db", "with_plugins", "with_test_worker")
+# the xloader_hook callback must fail fast (job_timeout is 2s below);
+# a closed local port does that, a DNS lookup of test.ckan.net may not
+@pytest.mark.ckan_config("ckan.site_url", "http://127.0.0.1:9")
 @pytest.mark.ckan_config("ckanext.xloader.job_timeout", 2)
 @pytest.mark.ckan_config("ckanext.xloader.copy_chunk_size", 5120)
 @pytest.mark.ckan_config("ckan.jobs.timeout", 2)
