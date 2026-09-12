@@ -14,8 +14,12 @@ import sys
 from psycopg2 import errors
 from six.moves.urllib.parse import urlsplit
 import requests
-from rq import get_current_job
-from rq.timeouts import JobTimeoutException
+try:
+    # CKAN without rq (PostgreSQL only jobs)
+    from ckan.lib.jobs import get_current_job, JobTimeoutException
+except ImportError:
+    from rq import get_current_job
+    from rq.timeouts import JobTimeoutException
 import sqlalchemy as sa
 
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
