@@ -104,3 +104,62 @@ class TestGetJob:
         messages = sorted([item["message"] for item in job["logs"]])
 
         assert messages == sorted([first_message, second_message])
+
+
+@pytest.mark.usefixtures("with_plugins")
+class TestInit:
+    def test_init_is_idempotent(self, ckan_config: dict[str, Any]):
+        """Calling init() again with the same URI keeps the same engine.
+
+        xloader_status calls init() on every resource badge; rebuilding
+        the engine each time leaked connection pools.
+        """
+        db.init(ckan_config)
+        engine = db.ENGINE
+        tables = (db.JOBS_TABLE, db.METADATA_TABLE, db.LOGS_TABLE)
+        db.init(ckan_config)
+        assert db.ENGINE is engine
+        assert (db.JOBS_TABLE, db.METADATA_TABLE, db.LOGS_TABLE) == tables
+
+    def test_init_reinitialises_on_uri_change(
+        self, ckan_config: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    ):
+        db.init(ckan_config)
+        engine = db.ENGINE
+        monkeypatch.setattr(db, "_INIT_URI", "sqlite://")
+        db.init(ckan_config)
+        assert db.ENGINE is not engine
+        assert db._INIT_URI == ckan_config.get(
+            "ckanext.xloader.jobs_db.uri", "sqlite:////tmp/xloader_jobs.db"
+        )
+
+    def test_init_is_thread_safe(
+        self, ckan_config: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    ):
+        """Concurrent first calls must not race on the module globals.
+
+        Before the lock, two gthread workers rendering a dataset page at
+        once failed with "Table 'logs' is already defined for this
+        MetaData instance".
+        """
+        import threading
+
+        monkeypatch.setattr(db, "ENGINE", None)
+        monkeypatch.setattr(db, "_INIT_URI", None)
+        errors: list[BaseException] = []
+        start = threading.Barrier(8)
+
+        def run():
+            try:
+                start.wait()
+                db.init(ckan_config)
+            except BaseException as e:  # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=run) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert errors == []
+        assert db.ENGINE is not None
