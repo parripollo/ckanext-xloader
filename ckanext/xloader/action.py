@@ -327,8 +327,7 @@ def xloader_status(context, data_dict):
     job_detail = None
 
     if job_id:
-        # get logs from the xloader db
-        db.init(config)
+        # get logs from the xloader db (initialised in plugin.configure)
         job_detail = db.get_job(job_id)
 
         if job_detail and job_detail.get('logs'):

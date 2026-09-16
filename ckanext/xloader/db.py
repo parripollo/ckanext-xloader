@@ -10,16 +10,12 @@ import json
 
 import six
 import sqlalchemy
-import threading
 
 ENGINE = None
 _METADATA = None
 JOBS_TABLE = None
 METADATA_TABLE = None
 LOGS_TABLE = None
-# URI the module was initialised with; init() is a no-op while it matches.
-_INIT_URI = None
-_INIT_LOCK = threading.Lock()
 
 
 def init(config, echo=False):
@@ -40,33 +36,14 @@ def init(config, echo=False):
 
     """
     global ENGINE, _METADATA, JOBS_TABLE, METADATA_TABLE, LOGS_TABLE
-    global _INIT_URI
     db_uri = config.get('ckanext.xloader.jobs_db.uri',
                         'sqlite:////tmp/xloader_jobs.db')
-    # init() runs on every xloader_status call (one per resource badge on
-    # a dataset page). Without the guard each call built a new engine and
-    # connection pool that was never disposed, and two threads of the same
-    # web worker rendering at once raced on the module globals
-    # ("Table 'logs' is already defined for this MetaData instance").
-    with _INIT_LOCK:
-        already_initialised = (
-            _INIT_URI == db_uri
-            and ENGINE is not None
-            and JOBS_TABLE is not None
-            and METADATA_TABLE is not None
-            and LOGS_TABLE is not None
-        )
-        if already_initialised:
-            return
-        if ENGINE is not None:
-            ENGINE.dispose()
-        ENGINE = sqlalchemy.create_engine(db_uri, echo=echo)
-        _METADATA = sqlalchemy.MetaData()
-        JOBS_TABLE = _init_jobs_table()
-        METADATA_TABLE = _init_metadata_table()
-        LOGS_TABLE = _init_logs_table()
-        _METADATA.create_all(ENGINE)
-        _INIT_URI = db_uri
+    ENGINE = sqlalchemy.create_engine(db_uri, echo=echo)
+    _METADATA = sqlalchemy.MetaData()
+    JOBS_TABLE = _init_jobs_table()
+    METADATA_TABLE = _init_metadata_table()
+    LOGS_TABLE = _init_logs_table()
+    _METADATA.create_all(ENGINE)
 
 
 def drop_all():

@@ -8,6 +8,7 @@ except ImportError:
 from ckan.plugins.toolkit import NotAuthorized
 from ckan.tests import helpers, factories
 
+from ckanext.xloader import db
 from ckanext.xloader.utils import get_xloader_user_apitoken
 
 
@@ -138,6 +139,28 @@ class TestAction(object):
             resource_id=res["id"],
         )
 
+        assert status["status"] == "pending"
+
+    def test_status_does_not_reinitialise_the_jobs_db(
+        self, with_api_token, monkeypatch
+    ):
+        # db.init() builds a new engine and pool each time; the badges call
+        # xloader_status on every dataset page, so the action must rely on
+        # the engine created once in plugin.configure().
+        res = factories.Resource(format="CSV")
+        job_id = helpers.call_action(
+            "task_status_show",
+            entity_id=res["id"],
+            task_type="xloader",
+            key="xloader",
+        )["value"]
+        assert "job_id" in job_id
+
+        def fail(*args, **kwargs):
+            raise AssertionError("db.init() called from xloader_status")
+
+        monkeypatch.setattr(db, "init", fail)
+        status = helpers.call_action("xloader_status", resource_id=res["id"])
         assert status["status"] == "pending"
 
     def test_xloader_user_api_token_from_config(self):

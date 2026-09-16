@@ -9,7 +9,7 @@ from ckan.plugins import toolkit
 from ckan.model.domain_object import DomainObjectOperation
 from ckan.model.resource import Resource
 
-from . import action, auth, helpers as xloader_helpers, jobs, utils
+from . import action, auth, db, helpers as xloader_helpers, jobs, utils
 from ckanext.xloader.utils import XLoaderFormats
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
 
@@ -90,6 +90,10 @@ class xloaderPlugin(plugins.SingletonPlugin):
         jobs.retried_job_timeout = config_.get('ckanext.xloader.job_timeout', '3600')
         jobs.apitoken_header_name = config_.get('apitoken_header_name', 'Authorization')
         jobs.default_queue_names = config_.get('ckanext.xloader.queue_names', DEFAULT_QUEUE_NAME).split()
+
+        # Engine and table objects for the jobs db, once per process.
+        # xloader_status reads from them on every dataset page (badges).
+        db.init(config_)
 
     # IPipeValidation
 
