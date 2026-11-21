@@ -15,7 +15,6 @@ from psycopg2 import errors
 from six.moves.urllib.parse import urlsplit
 import requests
 from ckan.lib.jobs import get_current_job, JobTimeoutException
-from tabulator.exceptions import SourceError
 import sqlalchemy as sa
 
 from ckan.lib.jobs import DEFAULT_QUEUE_NAME
@@ -341,12 +340,7 @@ def xloader_data_into_datastore_(input, job_dict, logger):
                     logger.warning('Load using COPY failed: %s', e)
                     logger.info('Trying again with tabulator')
                     tabulator_load()
-        except (JobTimeoutException, SourceError) as e:
-            # tabulator wraps a timeout raised while it reads the file
-            # in a SourceError
-            if isinstance(e, SourceError) and not isinstance(
-                    e.__context__, JobTimeoutException):
-                raise
+        except JobTimeoutException:
             logger.warning('Job timed out after %ss', retried_job_timeout)
             raise JobError('Job timed out after {}s'.format(retried_job_timeout))
         except FileCouldNotBeLoadedError as e:
