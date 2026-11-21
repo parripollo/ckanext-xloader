@@ -13,6 +13,7 @@ import psycopg2
 from chardet import UniversalDetector
 from six.moves import zip
 from tabulator import config as tabulator_config, EncodingError, Stream, TabulatorException
+from tabulator.exceptions import SourceError
 from unidecode import unidecode
 import sqlalchemy as sa
 
@@ -23,6 +24,7 @@ from .job_exceptions import FileCouldNotBeLoadedError, LoaderError
 from .parser import CSV_SAMPLE_LINES, TypeConverter
 from .utils import cleanup_temp_file, datastore_resource_exists, headers_guess, type_guess
 
+from ckan.lib.jobs import JobTimeoutException
 from ckan.plugins.toolkit import config, _
 
 import ckanext.datastore.backend.postgres as datastore_db
@@ -145,8 +147,13 @@ class UnknownEncodingStream(object):
                                  encoding=SINGLE_BYTE_ENCODING, **self.stream_args).__enter__()
         return self.stream
 
-    def __exit__(self, *args):
-        return self.stream.__exit__(*args)
+    def __exit__(self, exc_type, exc, traceback):
+        self.stream.__exit__(exc_type, exc, traceback)
+        # tabulator turns any error raised while it reads the file into a
+        # SourceError. If it was the job timeout, raise it as what it is.
+        if isinstance(exc, SourceError) and isinstance(
+                exc.__context__, JobTimeoutException):
+            raise exc.__context__
 
 
 def detect_encoding(file_path):

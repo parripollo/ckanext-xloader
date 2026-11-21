@@ -13,6 +13,7 @@ from six import text_type as str
 
 from decimal import Decimal
 
+from ckan.lib.jobs import JobTimeoutException
 from ckan.tests import factories
 from ckanext.xloader import loader
 from ckanext.xloader.loader import get_write_engine
@@ -1296,6 +1297,22 @@ class TestDatastoreBeforeUpdateHook(TestLoadBase):
 
 
 class TestLoadTabulator(TestLoadBase):
+    def test_job_timeout_while_tabulator_reads_rows(self):
+        """tabulator turns any error raised while it reads the rows into a
+        SourceError. A job timeout must still come out as a job timeout.
+        """
+        def timeout(rows):
+            # runs inside tabulator, like TypeConverter.convert_types
+            raise JobTimeoutException("Task exceeded maximum timeout value")
+            yield
+
+        with pytest.raises(JobTimeoutException):
+            with loader.UnknownEncodingStream(
+                get_sample_filepath("simple.csv"), "csv", None,
+                post_parse=[timeout]
+            ) as stream:
+                list(stream.iter())
+
     def test_simple(self, Session):
         csv_filepath = get_sample_filepath("simple.xls")
         resource = factories.Resource()
